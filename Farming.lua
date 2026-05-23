@@ -389,12 +389,14 @@ RenderButton.MouseButton1Click:Connect(function()
 end)
 
 -- ============================================
--- WATER REMOVAL (Fixed - Replaces with Ground)
+-- WATER REMOVAL (TRUE DELETE - Black Void)
 -- ============================================
 
 local WATER = Enum.Material.Water
-local GROUND = Enum.Material.Ground
 local AIR = Enum.Material.Air
+local waterCoverFolder = Instance.new("Folder")
+waterCoverFolder.Name = "WaterCovers"
+waterCoverFolder.Parent = Workspace
 
 local function clearWater()
     pcall(function()
@@ -417,16 +419,23 @@ local function clearWater()
         local materials, occupancy = Terrain:ReadVoxels(region, 4)
         local size = materials.Size
         local changed = 0
+        local waterPositions = {}
 
         for x = 1, size.X do
             for y = 1, size.Y do
                 for z = 1, size.Z do
                     if materials[x][y][z] == WATER then
-                        -- Replace water with GROUND instead of AIR
-                        -- This makes it match surrounding terrain color
-                        materials[x][y][z] = GROUND
-                        occupancy[x][y][z] = 1  -- Full occupancy for solid ground
+                        materials[x][y][z] = AIR
+                        occupancy[x][y][z] = 0
                         changed = changed + 1
+
+                        -- Store position for cover part
+                        local worldPos = region.CFrame.Position + Vector3.new(
+                            (x - size.X/2) * 4,
+                            (y - size.Y/2) * 4,
+                            (z - size.Z/2) * 4
+                        )
+                        table.insert(waterPositions, worldPos)
                     end
                 end
             end
@@ -435,31 +444,22 @@ local function clearWater()
         if changed > 0 then
             Terrain:WriteVoxels(region, 4, materials, occupancy)
         end
-    end)
-end
 
--- Also try to fill water areas with rock/sand colored terrain
-local function fillWaterWithTerrain()
-    pcall(function()
-        if not Terrain then return end
-
-        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local pos = hrp and hrp.Position or Vector3.new(0, 0, 0)
-
-        -- Fill a smaller region with rock material to blend in
-        local center = Vector3.new(
-            math.floor(pos.X / 4) * 4 + 2,
-            math.floor(pos.Y / 4) * 4 + 2,
-            math.floor(pos.Z / 4) * 4 + 2
-        )
-
-        local fillRegion = Region3.new(
-            center - Vector3.new(500, 50, 500),
-            center + Vector3.new(500, 50, 500)
-        ):ExpandToGrid(4)
-
-        -- Fill with rock material at water level
-        Terrain:FillRegion(fillRegion, 4, Enum.Material.Rock)
+        -- Spawn black cover parts over deleted water (prevents white void)
+        for _, wPos in ipairs(waterPositions) do
+            pcall(function()
+                local cover = Instance.new("Part")
+                cover.Name = "WaterVoidCover"
+                cover.Size = Vector3.new(4, 0.2, 4)
+                cover.CFrame = CFrame.new(wPos.X, wPos.Y, wPos.Z)
+                cover.Anchored = true
+                cover.CanCollide = false
+                cover.Transparency = 0
+                cover.Color = Color3.fromRGB(0, 0, 0)
+                cover.Material = Enum.Material.SmoothPlastic
+                cover.Parent = waterCoverFolder
+            end)
+        end
     end)
 end
 
@@ -482,7 +482,6 @@ end
 task.defer(function()
     task.wait(3)
     clearWater()
-    fillWaterWithTerrain()
     killWaterParts()
 end)
 
@@ -490,9 +489,8 @@ task.spawn(function()
     while true do
         task.wait(5)
         clearWater()
-        fillWaterWithTerrain()
         killWaterParts()
     end
 end)
 
-print("[Delta FPS Booster] Loaded | Water -> Ground Fixed")
+print("[Delta FPS Booster] Loaded | Water = TRUE VOID (Black)")
