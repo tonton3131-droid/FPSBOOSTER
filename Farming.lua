@@ -9,13 +9,27 @@ local LocalPlayer = Players.LocalPlayer
 local pgui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- ============================================
--- LIGHTING & TERRAIN (Basic - Delta Safe)
+-- BLACK SCREEN BACKGROUND (For Render Off)
+-- ============================================
+
+local BlackScreen = Instance.new("Frame")
+BlackScreen.Name = "BlackScreen"
+BlackScreen.Parent = pgui
+BlackScreen.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+BlackScreen.BorderSizePixel = 0
+BlackScreen.Size = UDim2.new(1, 0, 1, 0)
+BlackScreen.ZIndex = -100
+BlackScreen.Visible = false
+
+-- ============================================
+-- LIGHTING & TERRAIN
 -- ============================================
 
 pcall(function()
     Lighting.GlobalShadows = false
     Lighting.FogEnd = 9e9
     Lighting.ShadowSoftness = 0
+    Lighting.Brightness = 0
 end)
 
 pcall(function()
@@ -24,7 +38,7 @@ pcall(function()
         Terrain.WaterWaveSpeed = 0
         Terrain.WaterReflectance = 0
         Terrain.WaterTransparency = 1
-        Terrain.WaterColor = Color3.fromRGB(255, 255, 255)
+        Terrain.WaterColor = Color3.fromRGB(0, 0, 0)
         Terrain.Decoration = false
     end
 end)
@@ -77,7 +91,7 @@ local function makeInvisible(obj)
 end
 
 -- ============================================
--- PLAYER HIDING (Other Players)
+-- PLAYER HIDING
 -- ============================================
 
 local function hideCharacter(char)
@@ -116,7 +130,7 @@ pcall(function()
 end)
 
 -- ============================================
--- LOCAL PLAYER (Arms/Legs Only)
+-- LOCAL PLAYER
 -- ============================================
 
 local function setupLocalChar(char)
@@ -148,26 +162,33 @@ pcall(function()
 end)
 
 -- ============================================
--- WORLD STRIPPING (Ultra Light)
+-- WORLD STRIPPING
 -- ============================================
 
 local badClasses = {
-    ParticleEmitter = true,
-    Trail = true,
-    Smoke = true,
-    Fire = true,
-    Sparkles = true,
-    Beam = true,
-    Decal = true,
-    Texture = true,
-    Light = true
+    ParticleEmitter = true, Trail = true, Smoke = true,
+    Fire = true, Sparkles = true, Beam = true,
+    Decal = true, Texture = true, Light = true
 }
 
 local function stripObj(obj)
     pcall(function()
         if LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character) then return end
-        
+
         local class = obj.ClassName
+        local name = obj.Name:lower()
+
+        if name:find("grass") and not name:find("glass") then
+            if obj:IsA("BasePart") or obj:IsA("MeshPart") then
+                obj.Material = Enum.Material.SmoothPlastic
+                obj.Color = Color3.fromRGB(139, 69, 19)
+                obj.CastShadow = false
+            elseif obj:IsA("Folder") or obj:IsA("Model") then
+                obj:Destroy()
+                return
+            end
+        end
+
         if obj:IsA("BasePart") then
             obj.Material = Enum.Material.SmoothPlastic
             obj.CastShadow = false
@@ -197,14 +218,12 @@ local function stripObj(obj)
     end)
 end
 
--- Initial strip (limited scope for RAM)
 pcall(function()
     for _, obj in ipairs(Workspace:GetDescendants()) do
         stripObj(obj)
     end
 end)
 
--- Throttled strip queue
 local stripQueue = {}
 local lastStrip = 0
 
@@ -230,11 +249,10 @@ task.spawn(function()
     end
 end)
 
--- Rare cleanup (120s instead of 30s)
-task.spawn(function()
-    while true do
-        task.wait(120)
-        pcall(function()
+pcall(function()
+    task.spawn(function()
+        while true do
+            task.wait(120)
             local count = #Workspace:GetDescendants()
             if count > 10000 then
                 for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -246,8 +264,8 @@ task.spawn(function()
                     end)
                 end
             end
-        end)
-    end
+        end
+    end)
 end)
 
 -- ============================================
@@ -265,20 +283,19 @@ ScreenGui.Parent = pgui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 
--- BIG CENTERED FPS COUNTER
 local FpsFrame = Instance.new("Frame")
 FpsFrame.Name = "FpsCounter"
 FpsFrame.Parent = ScreenGui
-FpsFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-FpsFrame.BackgroundTransparency = 0.1
+FpsFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+FpsFrame.BackgroundTransparency = 0
 FpsFrame.BorderSizePixel = 0
-FpsFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
-FpsFrame.Size = UDim2.new(0, 300, 0, 150)
+FpsFrame.Position = UDim2.new(0.5, -200, 0.5, -100)
+FpsFrame.Size = UDim2.new(0, 400, 0, 200)
 FpsFrame.ZIndex = 100
 FpsFrame.Visible = false
 
 local fpsCorner = Instance.new("UICorner")
-fpsCorner.CornerRadius = UDim.new(0, 16)
+fpsCorner.CornerRadius = UDim.new(0, 20)
 fpsCorner.Parent = FpsFrame
 
 local FpsLabel = Instance.new("TextLabel")
@@ -288,11 +305,10 @@ FpsLabel.BackgroundTransparency = 1
 FpsLabel.Size = UDim2.new(1, 0, 1, 0)
 FpsLabel.Font = Enum.Font.SourceSansBold
 FpsLabel.Text = "FPS: --"
-FpsLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-FpsLabel.TextSize = 72
+FpsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+FpsLabel.TextSize = 96
 FpsLabel.ZIndex = 101
 
--- Toggle Button
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
@@ -363,62 +379,90 @@ RenderButton.MouseButton1Click:Connect(function()
         RenderButton.Text = "RENDER: ON"
         RenderButton.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
         FpsFrame.Visible = false
+        BlackScreen.Visible = false
     else
         RenderButton.Text = "RENDER: OFF"
         RenderButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
         FpsFrame.Visible = true
+        BlackScreen.Visible = true
     end
 end)
 
 -- ============================================
--- WATER REMOVAL (Delta Optimized)
+-- WATER REMOVAL (Fixed - Replaces with Ground)
 -- ============================================
 
 local WATER = Enum.Material.Water
+local GROUND = Enum.Material.Ground
 local AIR = Enum.Material.Air
 
 local function clearWater()
     pcall(function()
         if not Terrain then return end
-        
+
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local pos = hrp and hrp.Position or Vector3.new(0, 0, 0)
-        
+
         local center = Vector3.new(
             math.floor(pos.X / 4) * 4 + 2,
             math.floor(pos.Y / 4) * 4 + 2,
             math.floor(pos.Z / 4) * 4 + 2
         )
-        
-        -- 1500 stud radius (big enough for most maps, small enough for 1.5GB)
+
         local region = Region3.new(
             center - Vector3.new(750, 300, 750),
             center + Vector3.new(750, 300, 750)
         ):ExpandToGrid(4)
-        
+
         local materials, occupancy = Terrain:ReadVoxels(region, 4)
         local size = materials.Size
         local changed = 0
-        
+
         for x = 1, size.X do
             for y = 1, size.Y do
                 for z = 1, size.Z do
                     if materials[x][y][z] == WATER then
-                        materials[x][y][z] = AIR
-                        occupancy[x][y][z] = 0
+                        -- Replace water with GROUND instead of AIR
+                        -- This makes it match surrounding terrain color
+                        materials[x][y][z] = GROUND
+                        occupancy[x][y][z] = 1  -- Full occupancy for solid ground
                         changed = changed + 1
                     end
                 end
             end
         end
-        
+
         if changed > 0 then
             Terrain:WriteVoxels(region, 4, materials, occupancy)
         end
     end)
 end
 
--- Destroy water parts
+-- Also try to fill water areas with rock/sand colored terrain
+local function fillWaterWithTerrain()
+    pcall(function()
+        if not Terrain then return end
+
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local pos = hrp and hrp.Position or Vector3.new(0, 0, 0)
+
+        -- Fill a smaller region with rock material to blend in
+        local center = Vector3.new(
+            math.floor(pos.X / 4) * 4 + 2,
+            math.floor(pos.Y / 4) * 4 + 2,
+            math.floor(pos.Z / 4) * 4 + 2
+        )
+
+        local fillRegion = Region3.new(
+            center - Vector3.new(500, 50, 500),
+            center + Vector3.new(500, 50, 500)
+        ):ExpandToGrid(4)
+
+        -- Fill with rock material at water level
+        Terrain:FillRegion(fillRegion, 4, Enum.Material.Rock)
+    end)
+end
+
 local function killWaterParts()
     pcall(function()
         for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -435,10 +479,10 @@ local function killWaterParts()
     end)
 end
 
--- Run water removal
 task.defer(function()
     task.wait(3)
     clearWater()
+    fillWaterWithTerrain()
     killWaterParts()
 end)
 
@@ -446,8 +490,9 @@ task.spawn(function()
     while true do
         task.wait(5)
         clearWater()
+        fillWaterWithTerrain()
         killWaterParts()
     end
 end)
 
-print("[Delta FPS Booster] Loaded | 1 CPU / 1.5GB Optimized")
+print("[Delta FPS Booster] Loaded | Water -> Ground Fixed")
