@@ -227,13 +227,19 @@ local function StripInstance(obj)
             obj:Destroy()
         elseif particleTypes[obj.ClassName] then
             obj:Destroy()
-        elseif obj:IsA("Light") and not obj:IsA("PointLight") then
+        elseif obj:IsA("Light") then
             obj:Destroy()
         elseif obj:IsA("MeshPart") then
-            obj.RenderFidelity = Enum.RenderFidelity.Performance
-            obj.Material = Enum.Material.SmoothPlastic
-            obj.CastShadow = false
-            obj.Reflectance = 0
+            local p = Instance.new("Part")
+            p.Size = obj.Size
+            p.CFrame = obj.CFrame
+            p.Color = Color3.fromRGB(100,100,100)
+            p.Material = Enum.Material.SmoothPlastic
+            p.Anchored = obj.Anchored
+            p.CanCollide = obj.CanCollide
+            p.Transparency = obj.Transparency
+            p.Parent = obj.Parent
+            obj:Destroy()
         elseif obj:IsA("SpecialMesh") then
             obj:Destroy()
         elseif obj:IsA("Explosion") then
