@@ -15,7 +15,7 @@ task.defer(function()
         end
     end
     for i = 1, 3 do
-        collectgarbage("collect")
+        pcall(function() gcinfo() end)
         task.wait(0.05)
     end
 end)
@@ -55,11 +55,6 @@ task.defer(function()
             end
         end)
     end
-end)
-
-settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-pcall(function()
-    settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
 end)
 
 Lighting.GlobalShadows = false
@@ -265,7 +260,7 @@ end)
 
 task.spawn(function()
     while task.wait(30) do
-        collectgarbage("collect")
+        pcall(function() gcinfo() end)
         local count = #Workspace:GetDescendants()
         if count > 8000 then
             for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -495,7 +490,7 @@ local lastCount = 0
 task.spawn(function()
     while true do
         task.wait(60)
-        collectgarbage("collect")
+        pcall(function() gcinfo() end)
 
         local count = #Workspace:GetDescendants()
         -- Only act if count is high AND grew significantly
@@ -529,4 +524,86 @@ pcall(function()
         end
         stripQueue = {}
     end)
+end)
+
+-- ============================================
+-- WATER REMOVAL
+-- ============================================
+
+local GameSettings = UserSettings():GetService("UserGameSettings")
+local BASE_RENDER_DISTANCE = 400
+local WATER = Enum.Material.Water
+local AIR = Enum.Material.Air
+
+local QUALITY_MULTIPLIERS = {
+    [1] = 0.25, [2] = 0.35, [3] = 0.45, [4] = 0.55, [5] = 0.70,
+    [6] = 0.85, [7] = 1.00, [8] = 1.15, [9] = 1.30, [10] = 1.50
+}
+
+local function getRenderDistance()
+    local quality = GameSettings.SavedQualityLevel.Value
+    local multiplier = QUALITY_MULTIPLIERS[quality] or 1.0
+    return math.floor(BASE_RENDER_DISTANCE * multiplier)
+end
+
+local function align(pos)
+    return Vector3.new(
+        math.floor(pos.X / 4) * 4 + 2,
+        math.floor(pos.Y / 4) * 4 + 2,
+        math.floor(pos.Z / 4) * 4 + 2
+    )
+end
+
+local function clearWaterAround(pos, renderDist)
+    local center = align(pos)
+    local half = renderDist / 2
+    local region = Region3.new(
+        center - Vector3.new(half, 100, half),
+        center + Vector3.new(half, 100, half)
+    ):ExpandToGrid(4)
+    local materials, occupancy = Terrain:ReadVoxels(region, 4)
+    local size = materials.Size
+    local changed = 0
+    for x = 1, size.X do
+        for y = 1, size.Y do
+            for z = 1, size.Z do
+                if materials[x][y][z] == WATER then
+                    materials[x][y][z] = AIR
+                    occupancy[x][y][z] = 0
+                    changed = changed + 1
+                end
+            end
+        end
+    end
+    if changed > 0 then
+        Terrain:WriteVoxels(region, 4, materials, occupancy)
+    end
+    return changed
+end
+
+task.spawn(function()
+    local lastPos = nil
+    local lastQuality = nil
+    while true do
+        local char = LocalPlayer.Character
+        if char then
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if root then
+                local pos = root.Position
+                local currentQuality = GameSettings.SavedQualityLevel.Value
+                local renderDist = getRenderDistance()
+                local movedEnough = not lastPos or (pos - lastPos).Magnitude > 50
+                local qualityChanged = lastQuality ~= currentQuality
+                if movedEnough or qualityChanged then
+                    local removed = clearWaterAround(pos, renderDist)
+                    if removed > 0 or qualityChanged then
+                        print(string.format("[Q%d | %dstuds] Water: %d blocks", currentQuality, renderDist, removed))
+                    end
+                    lastPos = pos
+                    lastQuality = currentQuality
+                end
+            end
+        end
+        task.wait(0.5)
+    end
 end)
