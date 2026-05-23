@@ -8,71 +8,26 @@ local MaterialService = game:GetService("MaterialService")
 local LocalPlayer = Players.LocalPlayer
 local pgui = LocalPlayer:WaitForChild("PlayerGui")
 
-task.defer(function()
-    if getnilinstances then
-        for _, v in pairs(getnilinstances()) do
-            pcall(function() v:Destroy() end)
-        end
-    end
-    for i = 1, 3 do
-        pcall(function() gcinfo() end)
-        task.wait(0.05)
-    end
-end)
+-- ============================================
+-- LIGHTING & TERRAIN (Basic - Delta Safe)
+-- ============================================
 
-task.spawn(function()
-    while task.wait(3) do
-        if Terrain then
-            pcall(function()
-                Terrain.Decoration = false
-            end)
-        end
-    end
-end)
-
-task.defer(function()
-    if not Terrain then return end
-    pcall(function()
-        local region = Terrain.MaxExtents
-        Terrain:ReplaceMaterial(region, 4, Enum.Material.Grass, Enum.Material.Ground)
-        Terrain:ReplaceMaterial(region, 4, Enum.Material.LeafyGrass, Enum.Material.Ground)
-    end)
-end)
-
-task.defer(function()
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        pcall(function()
-            local name = obj.Name:lower()
-            if name:find("grass") and not name:find("glass") then
-                if obj:IsA("BasePart") or obj:IsA("MeshPart") then
-                    obj.Material = Enum.Material.SmoothPlastic
-                    obj.Color = Color3.fromRGB(139, 69, 19)
-                elseif obj:IsA("Folder") or obj:IsA("Model") then
-                    if name == "grass" or name == "grasses" or name:find("grass_") then
-                        obj:Destroy()
-                    end
-                end
-            end
-        end)
-    end
-end)
-
-Lighting.GlobalShadows = false
-Lighting.FogEnd = 9e9
-Lighting.ShadowSoftness = 0
 pcall(function()
-    sethiddenproperty(Lighting, "Technology", 2)
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    Lighting.ShadowSoftness = 0
 end)
 
-if Terrain then
-    Terrain.WaterWaveSize = 0
-    Terrain.WaterWaveSpeed = 0
-    Terrain.WaterReflectance = 0
-    Terrain.WaterTransparency = 0
-    pcall(function()
-        sethiddenproperty(Terrain, "Decoration", false)
-    end)
-end
+pcall(function()
+    if Terrain then
+        Terrain.WaterWaveSize = 0
+        Terrain.WaterWaveSpeed = 0
+        Terrain.WaterReflectance = 0
+        Terrain.WaterTransparency = 1
+        Terrain.WaterColor = Color3.fromRGB(255, 255, 255)
+        Terrain.Decoration = false
+    end
+end)
 
 pcall(function()
     for _, v in pairs(MaterialService:GetChildren()) do
@@ -87,12 +42,12 @@ end)
 
 local function isArmOrLeg(obj)
     local name = obj.Name:lower()
-    return name:find("arm") or name:find("leg") or name:find("leftarm") or name:find("rightarm") or name:find("leftleg") or name:find("rightleg") or name:find("upperarm") or name:find("lowerarm") or name:find("upperleg") or name:find("lowerleg") or name:find("hand") or name:find("foot")
+    return name:find("arm") or name:find("leg") or name:find("hand") or name:find("foot")
 end
 
 local function makeVisible(obj)
     pcall(function()
-        if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("Part") then
+        if obj:IsA("BasePart") or obj:IsA("MeshPart") then
             obj.Transparency = 0
             obj.LocalTransparencyModifier = 0
             obj.CastShadow = false
@@ -104,7 +59,7 @@ end
 
 local function makeInvisible(obj)
     pcall(function()
-        if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("Part") then
+        if obj:IsA("BasePart") or obj:IsA("MeshPart") then
             obj.Transparency = 1
             obj.CastShadow = false
             obj.LocalTransparencyModifier = 1
@@ -115,76 +70,67 @@ local function makeInvisible(obj)
             obj:Destroy()
         elseif obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
             obj.Enabled = false
-        elseif obj:IsA("Accessory") or obj:IsA("Hat") or obj:IsA("Clothing") then
+        elseif obj:IsA("Accessory") or obj:IsA("Clothing") then
             obj:Destroy()
         end
     end)
 end
 
 -- ============================================
--- OTHER PLAYERS: FULLY INVISIBLE
+-- PLAYER HIDING (Other Players)
 -- ============================================
 
-local function HidePlayerCharacter(char)
+local function hideCharacter(char)
     if not char then return end
     if LocalPlayer.Character and char == LocalPlayer.Character then return end
-
-    for _, obj in ipairs(char:GetDescendants()) do
-        makeInvisible(obj)
-    end
-
-    char.DescendantAdded:Connect(function(desc)
-        makeInvisible(desc)
+    pcall(function()
+        for _, obj in ipairs(char:GetDescendants()) do
+            makeInvisible(obj)
+        end
+    end)
+    pcall(function()
+        char.DescendantAdded:Connect(function(desc)
+            makeInvisible(desc)
+        end)
     end)
 end
 
-local function HideAllOtherPlayers()
+pcall(function()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
-            HidePlayerCharacter(player.Character)
+            hideCharacter(player.Character)
         end
     end
-end
+end)
 
-HideAllOtherPlayers()
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(char)
-        task.wait(0.5)
-        HidePlayerCharacter(char)
+pcall(function()
+    Players.PlayerAdded:Connect(function(player)
+        if player == LocalPlayer then return end
+        pcall(function()
+            player.CharacterAdded:Connect(function(char)
+                task.wait(0.5)
+                hideCharacter(char)
+            end)
+        end)
     end)
 end)
 
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        player.CharacterAdded:Connect(function(char)
-            task.wait(0.5)
-            HidePlayerCharacter(char)
-        end)
-    end
-end
-
 -- ============================================
--- LOCAL PLAYER: ARMS & LEGS VISIBLE ONLY
+-- LOCAL PLAYER (Arms/Legs Only)
 -- ============================================
 
-local function SetupLocalCharacter(char)
+local function setupLocalChar(char)
     if not char then return end
-
-    for _, obj in ipairs(char:GetDescendants()) do
-        makeInvisible(obj)
-    end
-
-    for _, obj in ipairs(char:GetDescendants()) do
-        pcall(function()
+    pcall(function()
+        for _, obj in ipairs(char:GetDescendants()) do
+            makeInvisible(obj)
+        end
+        for _, obj in ipairs(char:GetDescendants()) do
             if isArmOrLeg(obj) then
                 makeVisible(obj)
             end
-        end)
-    end
-
-    char.DescendantAdded:Connect(function(desc)
-        pcall(function()
+        end
+        char.DescendantAdded:Connect(function(desc)
             if isArmOrLeg(desc) then
                 makeVisible(desc)
             else
@@ -194,37 +140,39 @@ local function SetupLocalCharacter(char)
     end)
 end
 
-if LocalPlayer.Character then
-    SetupLocalCharacter(LocalPlayer.Character)
-end
-LocalPlayer.CharacterAdded:Connect(SetupLocalCharacter)
+pcall(function()
+    if LocalPlayer.Character then
+        setupLocalChar(LocalPlayer.Character)
+    end
+    LocalPlayer.CharacterAdded:Connect(setupLocalChar)
+end)
 
 -- ============================================
--- WORLD STRIPPING (skip local character)
+-- WORLD STRIPPING (Ultra Light)
 -- ============================================
 
-local particleTypes = {
+local badClasses = {
     ParticleEmitter = true,
     Trail = true,
     Smoke = true,
     Fire = true,
     Sparkles = true,
-    Beam = true
+    Beam = true,
+    Decal = true,
+    Texture = true,
+    Light = true
 }
 
-local function StripInstance(obj)
+local function stripObj(obj)
     pcall(function()
         if LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character) then return end
-
+        
+        local class = obj.ClassName
         if obj:IsA("BasePart") then
             obj.Material = Enum.Material.SmoothPlastic
             obj.CastShadow = false
             obj.Reflectance = 0
-        elseif obj:IsA("Decal") or obj:IsA("Texture") then
-            obj:Destroy()
-        elseif particleTypes[obj.ClassName] then
-            obj:Destroy()
-        elseif obj:IsA("Light") then
+        elseif badClasses[class] then
             obj:Destroy()
         elseif obj:IsA("MeshPart") then
             local p = Instance.new("Part")
@@ -240,10 +188,8 @@ local function StripInstance(obj)
         elseif obj:IsA("SpecialMesh") then
             obj:Destroy()
         elseif obj:IsA("Explosion") then
-            obj.BlastPressure = 1
-            obj.BlastRadius = 1
             obj.Visible = false
-        elseif obj:IsA("Clothing") or obj:IsA("SurfaceAppearance") or obj:IsA("BaseWrap") then
+        elseif obj:IsA("Clothing") or obj:IsA("SurfaceAppearance") then
             obj:Destroy()
         elseif obj:IsA("PostEffect") then
             obj.Enabled = false
@@ -251,38 +197,67 @@ local function StripInstance(obj)
     end)
 end
 
-for _, obj in ipairs(game:GetDescendants()) do
-    StripInstance(obj)
-end
+-- Initial strip (limited scope for RAM)
+pcall(function()
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        stripObj(obj)
+    end
+end)
 
-game.DescendantAdded:Connect(function(obj)
-    task.defer(function()
-        StripInstance(obj)
+-- Throttled strip queue
+local stripQueue = {}
+local lastStrip = 0
+
+pcall(function()
+    game.DescendantAdded:Connect(function(obj)
+        table.insert(stripQueue, obj)
     end)
 end)
 
 task.spawn(function()
-    while task.wait(30) do
-        pcall(function() gcinfo() end)
-        local count = #Workspace:GetDescendants()
-        if count > 8000 then
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                pcall(function()
-                    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Decal") or obj:IsA("Texture") then
-                        obj:Destroy()
-                    end
-                end)
+    while true do
+        local t = tick()
+        if t - lastStrip >= 0.1 and #stripQueue > 0 then
+            lastStrip = t
+            for i = 1, math.min(10, #stripQueue) do
+                local obj = table.remove(stripQueue, 1)
+                if obj and obj.Parent then
+                    stripObj(obj)
+                end
             end
         end
+        task.wait(0.05)
+    end
+end)
+
+-- Rare cleanup (120s instead of 30s)
+task.spawn(function()
+    while true do
+        task.wait(120)
+        pcall(function()
+            local count = #Workspace:GetDescendants()
+            if count > 10000 then
+                for _, obj in ipairs(Workspace:GetDescendants()) do
+                    pcall(function()
+                        local c = obj.ClassName
+                        if c == "ParticleEmitter" or c == "Trail" or c == "Decal" or c == "Texture" then
+                            obj:Destroy()
+                        end
+                    end)
+                end
+            end
+        end)
     end
 end)
 
 -- ============================================
--- RENDER GUI (3D Toggle + BIG CENTERED FPS Counter)
+-- RENDER GUI + BIG CENTERED FPS
 -- ============================================
 
-local oldGui = pgui:FindFirstChild("RenderToggle")
-if oldGui then oldGui:Destroy() end
+pcall(function()
+    local oldGui = pgui:FindFirstChild("RenderToggle")
+    if oldGui then oldGui:Destroy() end
+end)
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "RenderToggle"
@@ -290,18 +265,17 @@ ScreenGui.Parent = pgui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 
--- FPS Counter (BIG & CENTERED - Black text on white background)
+-- BIG CENTERED FPS COUNTER
 local FpsFrame = Instance.new("Frame")
 FpsFrame.Name = "FpsCounter"
 FpsFrame.Parent = ScreenGui
 FpsFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 FpsFrame.BackgroundTransparency = 0.1
 FpsFrame.BorderSizePixel = 0
--- CENTER OF SCREEN
 FpsFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
 FpsFrame.Size = UDim2.new(0, 300, 0, 150)
 FpsFrame.ZIndex = 100
-FpsFrame.Visible = false -- Hidden by default, shows when render is off
+FpsFrame.Visible = false
 
 local fpsCorner = Instance.new("UICorner")
 fpsCorner.CornerRadius = UDim.new(0, 16)
@@ -315,10 +289,10 @@ FpsLabel.Size = UDim2.new(1, 0, 1, 0)
 FpsLabel.Font = Enum.Font.SourceSansBold
 FpsLabel.Text = "FPS: --"
 FpsLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-FpsLabel.TextSize = 72  -- BIG FONT
-FpsLabel.TextStrokeTransparency = 0.8
+FpsLabel.TextSize = 72
 FpsLabel.ZIndex = 101
 
+-- Toggle Button
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
@@ -363,8 +337,6 @@ renderCorner.CornerRadius = UDim.new(0, 6)
 renderCorner.Parent = RenderButton
 
 local renderOn = true
-
--- FPS tracking variables
 local fps = 0
 local lastTick = tick()
 local frameCount = 0
@@ -376,15 +348,17 @@ RunService.RenderStepped:Connect(function()
         fps = frameCount
         frameCount = 0
         lastTick = now
-        if FpsLabel then
+        pcall(function()
             FpsLabel.Text = "FPS: " .. tostring(fps)
-        end
+        end)
     end
 end)
 
 RenderButton.MouseButton1Click:Connect(function()
     renderOn = not renderOn
-    RunService:Set3dRenderingEnabled(renderOn)
+    pcall(function()
+        RunService:Set3dRenderingEnabled(renderOn)
+    end)
     if renderOn then
         RenderButton.Text = "RENDER: ON"
         RenderButton.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
@@ -397,249 +371,83 @@ RenderButton.MouseButton1Click:Connect(function()
 end)
 
 -- ============================================
--- MULTI-INSTANCE FARM OPTIMIZATIONS
+-- WATER REMOVAL (Delta Optimized)
 -- ============================================
 
-local heartbeat = RunService.Heartbeat
-
-local activeConnections = {}
-local function trackConnection(name, conn)
-    if not activeConnections[name] then
-        activeConnections[name] = {}
-    end
-    table.insert(activeConnections[name], conn)
-    return conn
-end
-
-local function disconnectByName(name)
-    local conns = activeConnections[name]
-    if conns then
-        for i = #conns, 1, -1 do
-            local c = conns[i]
-            if c and typeof(c) == "RBXScriptConnection" and c.Connected then
-                pcall(function() c:Disconnect() end)
-            end
-            conns[i] = nil
-        end
-        activeConnections[name] = nil
-    end
-end
-
-local function hideCharacter(char)
-    if not char then return end
-    if LocalPlayer.Character and char == LocalPlayer.Character then return end
-    for _, obj in ipairs(char:GetDescendants()) do
-        makeInvisible(obj)
-    end
-    trackConnection("hide_" .. tostring(char), char.DescendantAdded:Connect(function(desc)
-        makeInvisible(desc)
-    end))
-end
-
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer and player.Character then
-        hideCharacter(player.Character)
-    end
-end
-
-Players.PlayerAdded:Connect(function(player)
-    if player == LocalPlayer then return end
-    trackConnection("player_" .. tostring(player), player.CharacterAdded:Connect(function(char)
-        task.wait(0.3)
-        hideCharacter(char)
-    end))
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    disconnectByName("player_" .. tostring(player))
-    disconnectByName("hide_" .. tostring(player.Character))
-end)
-
-local function setupLocalChar(char)
-    if not char then return end
-
-    for name, _ in pairs(activeConnections) do
-        if name:find("local_") then
-            disconnectByName(name)
-        end
-    end
-
-    for _, obj in ipairs(char:GetDescendants()) do
-        makeInvisible(obj)
-    end
-
-    for _, obj in ipairs(char:GetDescendants()) do
-        pcall(function()
-            if isArmOrLeg(obj) then
-                makeVisible(obj)
-            end
-        end)
-    end
-
-    trackConnection("local_desc", char.DescendantAdded:Connect(function(desc)
-        pcall(function()
-            if isArmOrLeg(desc) then
-                makeVisible(desc)
-            else
-                makeInvisible(desc)
-            end
-        end)
-    end))
-end
-
-if LocalPlayer.Character then
-    setupLocalChar(LocalPlayer.Character)
-end
-
-trackConnection("local_charadded", LocalPlayer.CharacterAdded:Connect(setupLocalChar))
-trackConnection("local_charremoving", LocalPlayer.CharacterRemoving:Connect(function()
-    for name, _ in pairs(activeConnections) do
-        if name:find("local_") then
-            disconnectByName(name)
-        end
-    end
-end))
-
-local stripQueue = {}
-local lastStripTick = 0
-local STRIP_BATCH = 25
-local STRIP_INTERVAL = 0.033
-
-game.DescendantAdded:Connect(function(obj)
-    table.insert(stripQueue, obj)
-end)
-
-task.spawn(function()
-    while true do
-        local t = tick()
-        if t - lastStripTick >= STRIP_INTERVAL and #stripQueue > 0 then
-            lastStripTick = t
-            for i = 1, math.min(STRIP_BATCH, #stripQueue) do
-                local obj = table.remove(stripQueue, 1)
-                if obj and obj.Parent then
-                    StripInstance(obj)
-                end
-            end
-        end
-        task.wait(0.016)
-    end
-end)
-
-local lastCount = 0
-task.spawn(function()
-    while true do
-        task.wait(60)
-        pcall(function() gcinfo() end)
-
-        local count = #Workspace:GetDescendants()
-        if count > 10000 and count > lastCount * 1.3 then
-            local toDestroy = {}
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                pcall(function()
-                    local class = obj.ClassName
-                    if class == "ParticleEmitter" or class == "Trail" or class == "Decal" or class == "Texture" then
-                        table.insert(toDestroy, obj)
-                    end
-                end)
-            end
-            for i = 1, #toDestroy, 50 do
-                for j = i, math.min(i + 49, #toDestroy) do
-                    pcall(function() toDestroy[j]:Destroy() end)
-                end
-                task.wait(0.05)
-            end
-        end
-        lastCount = count
-    end
-end)
-
-pcall(function()
-    script.Destroying:Connect(function()
-        for name, _ in pairs(activeConnections) do
-            disconnectByName(name)
-        end
-        stripQueue = {}
-    end)
-end)
-
--- ============================================
--- WATER REMOVAL
--- ============================================
-
-local GameSettings = UserSettings():GetService("UserGameSettings")
-local BASE_RENDER_DISTANCE = 400
 local WATER = Enum.Material.Water
 local AIR = Enum.Material.Air
 
-local QUALITY_MULTIPLIERS = {
-    [1] = 0.25, [2] = 0.35, [3] = 0.45, [4] = 0.55, [5] = 0.70,
-    [6] = 0.85, [7] = 1.00, [8] = 1.15, [9] = 1.30, [10] = 1.50
-}
-
-local function getRenderDistance()
-    local quality = GameSettings.SavedQualityLevel.Value
-    local multiplier = QUALITY_MULTIPLIERS[quality] or 1.0
-    return math.floor(BASE_RENDER_DISTANCE * multiplier)
-end
-
-local function align(pos)
-    return Vector3.new(
-        math.floor(pos.X / 4) * 4 + 2,
-        math.floor(pos.Y / 4) * 4 + 2,
-        math.floor(pos.Z / 4) * 4 + 2
-    )
-end
-
-local function clearWaterAround(pos, renderDist)
-    local center = align(pos)
-    local half = renderDist / 2
-    local region = Region3.new(
-        center - Vector3.new(half, 100, half),
-        center + Vector3.new(half, 100, half)
-    ):ExpandToGrid(4)
-    local materials, occupancy = Terrain:ReadVoxels(region, 4)
-    local size = materials.Size
-    local changed = 0
-    for x = 1, size.X do
-        for y = 1, size.Y do
-            for z = 1, size.Z do
-                if materials[x][y][z] == WATER then
-                    materials[x][y][z] = AIR
-                    occupancy[x][y][z] = 0
-                    changed = changed + 1
+local function clearWater()
+    pcall(function()
+        if not Terrain then return end
+        
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local pos = hrp and hrp.Position or Vector3.new(0, 0, 0)
+        
+        local center = Vector3.new(
+            math.floor(pos.X / 4) * 4 + 2,
+            math.floor(pos.Y / 4) * 4 + 2,
+            math.floor(pos.Z / 4) * 4 + 2
+        )
+        
+        -- 1500 stud radius (big enough for most maps, small enough for 1.5GB)
+        local region = Region3.new(
+            center - Vector3.new(750, 300, 750),
+            center + Vector3.new(750, 300, 750)
+        ):ExpandToGrid(4)
+        
+        local materials, occupancy = Terrain:ReadVoxels(region, 4)
+        local size = materials.Size
+        local changed = 0
+        
+        for x = 1, size.X do
+            for y = 1, size.Y do
+                for z = 1, size.Z do
+                    if materials[x][y][z] == WATER then
+                        materials[x][y][z] = AIR
+                        occupancy[x][y][z] = 0
+                        changed = changed + 1
+                    end
                 end
             end
         end
-    end
-    if changed > 0 then
-        Terrain:WriteVoxels(region, 4, materials, occupancy)
-    end
-    return changed
+        
+        if changed > 0 then
+            Terrain:WriteVoxels(region, 4, materials, occupancy)
+        end
+    end)
 end
+
+-- Destroy water parts
+local function killWaterParts()
+    pcall(function()
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                if obj.Material == Enum.Material.Water then
+                    obj:Destroy()
+                end
+                local name = obj.Name:lower()
+                if (name:find("water") or name:find("lake") or name:find("ocean")) and not name:find("watermelon") then
+                    obj:Destroy()
+                end
+            end
+        end
+    end)
+end
+
+-- Run water removal
+task.defer(function()
+    task.wait(3)
+    clearWater()
+    killWaterParts()
+end)
 
 task.spawn(function()
-    local lastPos = nil
-    local lastQuality = nil
     while true do
-        local char = LocalPlayer.Character
-        if char then
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if root then
-                local pos = root.Position
-                local currentQuality = GameSettings.SavedQualityLevel.Value
-                local renderDist = getRenderDistance()
-                local movedEnough = not lastPos or (pos - lastPos).Magnitude > 50
-                local qualityChanged = lastQuality ~= currentQuality
-                if movedEnough or qualityChanged then
-                    local removed = clearWaterAround(pos, renderDist)
-                    if removed > 0 or qualityChanged then
-                        print(string.format("[Q%d | %dstuds] Water: %d blocks", currentQuality, renderDist, removed))
-                    end
-                    lastPos = pos
-                    lastQuality = currentQuality
-                end
-            end
-        end
-        task.wait(0.5)
+        task.wait(5)
+        clearWater()
+        killWaterParts()
     end
 end)
+
+print("[Delta FPS Booster] Loaded | 1 CPU / 1.5GB Optimized")
