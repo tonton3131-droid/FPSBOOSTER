@@ -281,7 +281,7 @@ task.spawn(function()
 end)
 
 -- ============================================
--- RENDER GUI (3D Toggle Only) - Multi-Instance Farm Optimized
+-- RENDER GUI (3D Toggle + FPS Counter)
 -- ============================================
 
 local oldGui = pgui:FindFirstChild("RenderToggle")
@@ -292,6 +292,32 @@ ScreenGui.Name = "RenderToggle"
 ScreenGui.Parent = pgui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
+
+-- FPS Counter (Black text on white background)
+local FpsFrame = Instance.new("Frame")
+FpsFrame.Name = "FpsCounter"
+FpsFrame.Parent = ScreenGui
+FpsFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+FpsFrame.BorderSizePixel = 0
+FpsFrame.Position = UDim2.new(0, 15, 0, 15)
+FpsFrame.Size = UDim2.new(0, 120, 0, 40)
+FpsFrame.ZIndex = 100
+FpsFrame.Visible = false -- Hidden by default, shows when render is off
+
+local fpsCorner = Instance.new("UICorner")
+fpsCorner.CornerRadius = UDim.new(0, 6)
+fpsCorner.Parent = FpsFrame
+
+local FpsLabel = Instance.new("TextLabel")
+FpsLabel.Name = "FpsLabel"
+FpsLabel.Parent = FpsFrame
+FpsLabel.BackgroundTransparency = 1
+FpsLabel.Size = UDim2.new(1, 0, 1, 0)
+FpsLabel.Font = Enum.Font.SourceSansBold
+FpsLabel.Text = "FPS: --"
+FpsLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+FpsLabel.TextSize = 24
+FpsLabel.ZIndex = 101
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
@@ -338,15 +364,35 @@ renderCorner.Parent = RenderButton
 
 local renderOn = true
 
+-- FPS tracking variables
+local fps = 0
+local lastTick = tick()
+local frameCount = 0
+
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local now = tick()
+    if now - lastTick >= 1 then
+        fps = frameCount
+        frameCount = 0
+        lastTick = now
+        if FpsLabel then
+            FpsLabel.Text = "FPS: " .. tostring(fps)
+        end
+    end
+end)
+
 RenderButton.MouseButton1Click:Connect(function()
     renderOn = not renderOn
     RunService:Set3dRenderingEnabled(renderOn)
     if renderOn then
         RenderButton.Text = "RENDER: ON"
         RenderButton.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+        FpsFrame.Visible = false
     else
         RenderButton.Text = "RENDER: OFF"
         RenderButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+        FpsFrame.Visible = true
     end
 end)
 
