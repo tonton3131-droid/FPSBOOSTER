@@ -171,12 +171,10 @@ end
 local function SetupLocalCharacter(char)
     if not char then return end
 
-    -- First pass: hide everything
     for _, obj in ipairs(char:GetDescendants()) do
         makeInvisible(obj)
     end
 
-    -- Second pass: make arms and legs visible
     for _, obj in ipairs(char:GetDescendants()) do
         pcall(function()
             if isArmOrLeg(obj) then
@@ -185,7 +183,6 @@ local function SetupLocalCharacter(char)
         end)
     end
 
-    -- Monitor new descendants
     char.DescendantAdded:Connect(function(desc)
         pcall(function()
             if isArmOrLeg(desc) then
@@ -281,7 +278,7 @@ task.spawn(function()
 end)
 
 -- ============================================
--- RENDER GUI (3D Toggle + FPS Counter)
+-- RENDER GUI (3D Toggle + BIG CENTERED FPS Counter)
 -- ============================================
 
 local oldGui = pgui:FindFirstChild("RenderToggle")
@@ -293,19 +290,21 @@ ScreenGui.Parent = pgui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 
--- FPS Counter (Black text on white background)
+-- FPS Counter (BIG & CENTERED - Black text on white background)
 local FpsFrame = Instance.new("Frame")
 FpsFrame.Name = "FpsCounter"
 FpsFrame.Parent = ScreenGui
 FpsFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+FpsFrame.BackgroundTransparency = 0.1
 FpsFrame.BorderSizePixel = 0
-FpsFrame.Position = UDim2.new(0, 15, 0, 15)
-FpsFrame.Size = UDim2.new(0, 120, 0, 40)
+-- CENTER OF SCREEN
+FpsFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
+FpsFrame.Size = UDim2.new(0, 300, 0, 150)
 FpsFrame.ZIndex = 100
 FpsFrame.Visible = false -- Hidden by default, shows when render is off
 
 local fpsCorner = Instance.new("UICorner")
-fpsCorner.CornerRadius = UDim.new(0, 6)
+fpsCorner.CornerRadius = UDim.new(0, 16)
 fpsCorner.Parent = FpsFrame
 
 local FpsLabel = Instance.new("TextLabel")
@@ -316,7 +315,8 @@ FpsLabel.Size = UDim2.new(1, 0, 1, 0)
 FpsLabel.Font = Enum.Font.SourceSansBold
 FpsLabel.Text = "FPS: --"
 FpsLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-FpsLabel.TextSize = 24
+FpsLabel.TextSize = 72  -- BIG FONT
+FpsLabel.TextStrokeTransparency = 0.8
 FpsLabel.ZIndex = 101
 
 local MainFrame = Instance.new("Frame")
@@ -402,7 +402,6 @@ end)
 
 local heartbeat = RunService.Heartbeat
 
--- Lightweight connection tracker (no metatable overhead)
 local activeConnections = {}
 local function trackConnection(name, conn)
     if not activeConnections[name] then
@@ -426,7 +425,6 @@ local function disconnectByName(name)
     end
 end
 
--- Fast player hiding (no nested trackers per char)
 local function hideCharacter(char)
     if not char then return end
     if LocalPlayer.Character and char == LocalPlayer.Character then return end
@@ -438,14 +436,12 @@ local function hideCharacter(char)
     end))
 end
 
--- Hide all existing other players
 for _, player in ipairs(Players:GetPlayers()) do
     if player ~= LocalPlayer and player.Character then
         hideCharacter(player.Character)
     end
 end
 
--- Handle new players
 Players.PlayerAdded:Connect(function(player)
     if player == LocalPlayer then return end
     trackConnection("player_" .. tostring(player), player.CharacterAdded:Connect(function(char)
@@ -454,29 +450,24 @@ Players.PlayerAdded:Connect(function(player)
     end))
 end)
 
--- Clean up when players leave
 Players.PlayerRemoving:Connect(function(player)
     disconnectByName("player_" .. tostring(player))
     disconnectByName("hide_" .. tostring(player.Character))
 end)
 
--- Local character: arms/legs only, aggressive cleanup
 local function setupLocalChar(char)
     if not char then return end
 
-    -- Kill ALL old local char connections immediately
     for name, _ in pairs(activeConnections) do
         if name:find("local_") then
             disconnectByName(name)
         end
     end
 
-    -- First pass: nuke everything
     for _, obj in ipairs(char:GetDescendants()) do
         makeInvisible(obj)
     end
 
-    -- Second pass: restore arms/legs
     for _, obj in ipairs(char:GetDescendants()) do
         pcall(function()
             if isArmOrLeg(obj) then
@@ -485,7 +476,6 @@ local function setupLocalChar(char)
         end)
     end
 
-    -- Track new descendants
     trackConnection("local_desc", char.DescendantAdded:Connect(function(desc)
         pcall(function()
             if isArmOrLeg(desc) then
@@ -510,17 +500,15 @@ trackConnection("local_charremoving", LocalPlayer.CharacterRemoving:Connect(func
     end
 end))
 
--- Throttled world stripper (critical for multi-instance)
 local stripQueue = {}
 local lastStripTick = 0
-local STRIP_BATCH = 25        -- smaller batches = smoother
-local STRIP_INTERVAL = 0.033  -- ~30fps processing cap
+local STRIP_BATCH = 25
+local STRIP_INTERVAL = 0.033
 
 game.DescendantAdded:Connect(function(obj)
     table.insert(stripQueue, obj)
 end)
 
--- Dedicated strip loop (not event-driven to prevent spam)
 task.spawn(function()
     while true do
         local t = tick()
@@ -533,11 +521,10 @@ task.spawn(function()
                 end
             end
         end
-        task.wait(0.016)  -- ~60 checks per second, but only process on interval
+        task.wait(0.016)
     end
 end)
 
--- Lightweight cleanup loop (every 60s, only if actually bloated)
 local lastCount = 0
 task.spawn(function()
     while true do
@@ -545,7 +532,6 @@ task.spawn(function()
         pcall(function() gcinfo() end)
 
         local count = #Workspace:GetDescendants()
-        -- Only act if count is high AND grew significantly
         if count > 10000 and count > lastCount * 1.3 then
             local toDestroy = {}
             for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -556,7 +542,6 @@ task.spawn(function()
                     end
                 end)
             end
-            -- Destroy in small batches with yields
             for i = 1, #toDestroy, 50 do
                 for j = i, math.min(i + 49, #toDestroy) do
                     pcall(function() toDestroy[j]:Destroy() end)
@@ -568,7 +553,6 @@ task.spawn(function()
     end
 end)
 
--- Emergency cleanup on script destroy
 pcall(function()
     script.Destroying:Connect(function()
         for name, _ in pairs(activeConnections) do
