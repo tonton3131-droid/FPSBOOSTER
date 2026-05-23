@@ -174,10 +174,10 @@ local badClasses = {
 local function stripObj(obj)
     pcall(function()
         if LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character) then return end
-
+        
         local class = obj.ClassName
         local name = obj.Name:lower()
-
+        
         if name:find("grass") and not name:find("glass") then
             if obj:IsA("BasePart") or obj:IsA("MeshPart") then
                 obj.Material = Enum.Material.SmoothPlastic
@@ -188,7 +188,7 @@ local function stripObj(obj)
                 return
             end
         end
-
+        
         if obj:IsA("BasePart") then
             obj.Material = Enum.Material.SmoothPlastic
             obj.CastShadow = false
@@ -389,76 +389,49 @@ RenderButton.MouseButton1Click:Connect(function()
 end)
 
 -- ============================================
--- WATER REMOVAL (TRUE DELETE - Black Void)
+-- WATER REMOVAL (Original Method - Ground Fill)
 -- ============================================
 
 local WATER = Enum.Material.Water
-local AIR = Enum.Material.Air
-local waterCoverFolder = Instance.new("Folder")
-waterCoverFolder.Name = "WaterCovers"
-waterCoverFolder.Parent = Workspace
+local GROUND = Enum.Material.Ground
 
 local function clearWater()
     pcall(function()
         if not Terrain then return end
-
+        
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local pos = hrp and hrp.Position or Vector3.new(0, 0, 0)
-
+        
         local center = Vector3.new(
             math.floor(pos.X / 4) * 4 + 2,
             math.floor(pos.Y / 4) * 4 + 2,
             math.floor(pos.Z / 4) * 4 + 2
         )
-
+        
         local region = Region3.new(
             center - Vector3.new(750, 300, 750),
             center + Vector3.new(750, 300, 750)
         ):ExpandToGrid(4)
-
+        
         local materials, occupancy = Terrain:ReadVoxels(region, 4)
         local size = materials.Size
         local changed = 0
-        local waterPositions = {}
-
+        
         for x = 1, size.X do
             for y = 1, size.Y do
                 for z = 1, size.Z do
                     if materials[x][y][z] == WATER then
-                        materials[x][y][z] = AIR
-                        occupancy[x][y][z] = 0
+                        -- ORIGINAL METHOD: Replace with Ground
+                        materials[x][y][z] = GROUND
+                        occupancy[x][y][z] = 1
                         changed = changed + 1
-
-                        -- Store position for cover part
-                        local worldPos = region.CFrame.Position + Vector3.new(
-                            (x - size.X/2) * 4,
-                            (y - size.Y/2) * 4,
-                            (z - size.Z/2) * 4
-                        )
-                        table.insert(waterPositions, worldPos)
                     end
                 end
             end
         end
-
+        
         if changed > 0 then
             Terrain:WriteVoxels(region, 4, materials, occupancy)
-        end
-
-        -- Spawn black cover parts over deleted water (prevents white void)
-        for _, wPos in ipairs(waterPositions) do
-            pcall(function()
-                local cover = Instance.new("Part")
-                cover.Name = "WaterVoidCover"
-                cover.Size = Vector3.new(4, 0.2, 4)
-                cover.CFrame = CFrame.new(wPos.X, wPos.Y, wPos.Z)
-                cover.Anchored = true
-                cover.CanCollide = false
-                cover.Transparency = 0
-                cover.Color = Color3.fromRGB(0, 0, 0)
-                cover.Material = Enum.Material.SmoothPlastic
-                cover.Parent = waterCoverFolder
-            end)
         end
     end)
 end
@@ -493,4 +466,4 @@ task.spawn(function()
     end
 end)
 
-print("[Delta FPS Booster] Loaded | Water = TRUE VOID (Black)")
+print("[Delta FPS Booster] Loaded | Water -> Ground (Original)")
