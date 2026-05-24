@@ -1,7 +1,8 @@
 local terrain = workspace:FindFirstChildOfClass("Terrain")
-local region = terrain.MaxExtents
-terrain:FillBlock(
-    CFrame.new(region.Min:Lerp(region.Max, 0.5)),
-    region.Max - region.Min,
-    Enum.Material.Air
-)
+terrain.WaterTransparency = 1
+terrain.WaterWaveSize = 0
+terrain.WaterWaveSpeed = 0
+terrain.WaterReflectance = 0
+pcall(function()
+    terrain:ReplaceMaterial(Enum.Material.Water, 4, Enum.Material.Air)
+end)
