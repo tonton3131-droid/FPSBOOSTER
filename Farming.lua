@@ -1,8 +1,11 @@
+-- FIXED WATER REMOVER - No Lerp, No ReplaceMaterial
 local terrain = workspace:FindFirstChildOfClass("Terrain")
-terrain.WaterTransparency = 1
-terrain.WaterWaveSize = 0
-terrain.WaterWaveSpeed = 0
-terrain.WaterReflectance = 0
+
 pcall(function()
-    terrain:ReplaceMaterial(Enum.Material.Water, 4, Enum.Material.Air)
+    terrain.WaterTransparency = 1
+    terrain.WaterReflectance = 0
+    terrain.WaterWaveSize = 0
+    terrain.WaterWaveSpeed = 0
 end)
+
+print("[Water] Done - water should be invisible now!")
